@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SubmissionPayload } from "@/lib/types";
-import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak } from "@/lib/airtable";
+import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak, createStreak } from "@/lib/airtable";
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +20,12 @@ export async function POST(request: Request) {
     const existingEntry = existingSubmissions.find(entry => entry.date === date);
     
     // Get user's current streak
-    const userStreak = await getUserStreak(userId);
+    let userStreak = await getUserStreak(userId);
+
+    // If userStreak.id is missing, create a new streak record
+    if (!userStreak.id) {
+      userStreak = await createStreak(userId);
+    }
     
     let newStreakCount = userStreak.currentStreak;
     let shouldUpdateStreak = false;

@@ -216,4 +216,18 @@ export async function createOrUpdateUser(user: Omit<AirtableUser, 'id'>): Promis
     console.error('Error creating/updating user:', error);
     throw error;
   }
+}
+
+export async function createStreak(userId: string): Promise<AirtableStreak> {
+  const newStreak: Omit<AirtableStreak, 'id'> = {
+    userId,
+    currentStreak: 0,
+    longestStreak: 0,
+    lastUpdated: formatDateForAirtable(new Date())
+  };
+  const record = await base(TABLES.STREAKS).create(newStreak);
+  return {
+    id: record.id,
+    ...record.fields
+  } as AirtableStreak;
 } 
