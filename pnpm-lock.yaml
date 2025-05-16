@@ -105,8 +105,8 @@ dependencies:
     specifier: ^4.0.6
     version: 4.0.6(@types/react@18.2.22)(react-dom@18.2.0)(react@18.2.0)
   airtable:
-    specifier: ^0.12.2
-    version: 0.12.2
+    specifier: 0.11.1
+    version: 0.11.1
   autoprefixer:
     specifier: 10.4.15
     version: 10.4.15(postcss@8.4.30)
@@ -2122,8 +2122,8 @@ packages:
     hasBin: true
     dev: false
 
-  /airtable@0.12.2:
-    resolution: {integrity: sha512-HS3VytUBTKj8A0vPl7DDr5p/w3IOGv6RXL0fv7eczOWAtj9Xe8ri4TAiZRXoOyo+Z/COADCj+oARFenbxhmkIg==}
+  /airtable@0.11.1:
+    resolution: {integrity: sha512-33zBuUDhLl+FWWAFxFjS1a+vJr/b+UK//EV943nuiimChWph6YykQjYPmu/GucQ30g7mgaqq+98uPD4rfDHOgg==}
     engines: {node: '>=8.0.0'}
     dependencies:
       '@types/node': 14.18.63
