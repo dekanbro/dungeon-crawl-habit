@@ -1,14 +1,5 @@
 // Polyfill AbortController/AbortSignal for Airtable SDK in serverless environments
-if (typeof globalThis.AbortController === "undefined") {
-  // @ts-ignore
-  globalThis.AbortController = require("abort-controller");
-}
-if (typeof globalThis.AbortSignal === "undefined" && globalThis.AbortController) {
-  // @ts-ignore
-  globalThis.AbortSignal = globalThis.AbortController.prototype.signal.constructor;
-}
-
-import Airtable from 'airtable';
+// (No longer needed since we are removing the SDK)
 
 // Table names
 const TABLES = {
@@ -29,17 +20,6 @@ if (!process.env.AIRTABLE_API_KEY) {
 
 if (!process.env.AIRTABLE_BASE_ID) {
   throw new Error('AIRTABLE_BASE_ID is required in environment variables');
-}
-
-// Initialize Airtable with error handling
-let base: Airtable.Base;
-try {
-  base = new Airtable({
-    apiKey: process.env.AIRTABLE_API_KEY
-  }).base(process.env.AIRTABLE_BASE_ID);
-} catch (error) {
-  console.error('Failed to initialize Airtable:', error);
-  throw new Error('Failed to initialize Airtable client. Please check your API key and base ID.');
 }
 
 // Types for Airtable records
@@ -71,103 +51,78 @@ export interface AirtableStreak {
 
 // Utility functions for Airtable operations
 export async function getSubmissions(userId: string, limit: number = 30): Promise<AirtableSubmission[]> {
-  try {
-    console.log('[Airtable] Fetching submissions for userId:', userId);
-    const records = await base(TABLES.SUBMISSIONS)
-      .select({
-        filterByFormula: `{userId} = '${userId}'`,
-        sort: [{ field: 'date', direction: 'desc' }],
-        maxRecords: limit
-      })
-      .all();
-    console.log('[Airtable] Submissions fetched:', records.map(r => ({ id: r.id, ...r.fields })));
-    return records.map(record => ({
-      id: record.id,
-      ...record.fields
-    })) as AirtableSubmission[];
-  } catch (error) {
-    console.error('[Airtable] Error fetching submissions:', error);
-    // Return empty array if there's an error
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Submissions?filterByFormula=${encodeURIComponent(`{userId} = '${userId}'`)}&maxRecords=${limit}&sort[0][field]=date&sort[0][direction]=desc`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    console.error('[Airtable REST] Error fetching submissions:', await res.text());
     return [];
   }
+  const data = await res.json();
+  return (data.records || []).map((record: any) => ({
+    id: record.id,
+    ...record.fields
+  })) as AirtableSubmission[];
 }
 
 export async function createSubmission(submission: Omit<AirtableSubmission, 'id'>): Promise<AirtableSubmission> {
-  try {
-    const record = await base(TABLES.SUBMISSIONS).create({
-      ...submission,
-      createdAt: formatDateForAirtable(new Date(submission.createdAt)),
-      updatedAt: formatDateForAirtable(new Date(submission.updatedAt))
-    });
-    return {
-      id: record.id,
-      ...record.fields
-    } as AirtableSubmission;
-  } catch (error) {
-    console.error('Error creating submission:', error);
-    throw error;
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Submissions`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fields: submission }),
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    throw new Error('[Airtable REST] Error creating submission: ' + await res.text());
   }
+  const record = await res.json();
+  return {
+    id: record.id,
+    ...record.fields
+  } as AirtableSubmission;
 }
 
 export async function updateSubmission(id: string, submission: Partial<AirtableSubmission>): Promise<AirtableSubmission> {
-  try {
-    const record = await base(TABLES.SUBMISSIONS).update(id, {
-      ...submission,
-      updatedAt: submission.updatedAt ? formatDateForAirtable(new Date(submission.updatedAt)) : undefined
-    });
-    return {
-      id: record.id,
-      ...record.fields
-    } as AirtableSubmission;
-  } catch (error) {
-    console.error('Error updating submission:', error);
-    throw error;
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Submissions/${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fields: submission }),
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    throw new Error('[Airtable REST] Error updating submission: ' + await res.text());
   }
+  const record = await res.json();
+  return {
+    id: record.id,
+    ...record.fields
+  } as AirtableSubmission;
 }
 
 export async function getUserStreak(userId: string): Promise<AirtableStreak> {
-  try {
-    const records = await base(TABLES.STREAKS)
-      .select({
-        filterByFormula: `{userId} = '${userId}'`,
-        maxRecords: 1
-      })
-      .all();
-
-    if (records.length === 0) {
-      // Create new streak record if none exists
-      const newStreak: Omit<AirtableStreak, 'id'> = {
-        userId,
-        currentStreak: 0,
-        longestStreak: 0,
-        lastUpdated: formatDateForAirtable(new Date())
-      };
-      
-      try {
-        const record = await base(TABLES.STREAKS).create(newStreak);
-        return {
-          id: record.id,
-          ...record.fields
-        } as AirtableStreak;
-      } catch (createError) {
-        console.error('Error creating new streak record:', createError);
-        // If creation fails, return a default streak object
-        return {
-          userId,
-          currentStreak: 0,
-          longestStreak: 0,
-          lastUpdated: formatDateForAirtable(new Date())
-        };
-      }
-    }
-
-    return {
-      id: records[0].id,
-      ...records[0].fields
-    } as AirtableStreak;
-  } catch (error) {
-    console.error('Error fetching user streak:', error);
-    // Return a default streak object if there's an error
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Streaks?filterByFormula=${encodeURIComponent(`{userId} = '${userId}'`)}&maxRecords=1`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    console.error('[Airtable REST] Error fetching streak:', await res.text());
     return {
       userId,
       currentStreak: 0,
@@ -175,57 +130,98 @@ export async function getUserStreak(userId: string): Promise<AirtableStreak> {
       lastUpdated: formatDateForAirtable(new Date())
     };
   }
+  const data = await res.json();
+  if (!data.records || data.records.length === 0) {
+    return {
+      userId,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastUpdated: formatDateForAirtable(new Date())
+    };
+  }
+  const record = data.records[0];
+  return {
+    id: record.id,
+    ...record.fields
+  } as AirtableStreak;
 }
 
 export async function updateUserStreak(id: string, streak: Partial<AirtableStreak>): Promise<AirtableStreak> {
-  try {
-    const record = await base(TABLES.STREAKS).update(id, {
-      ...streak,
-      lastUpdated: streak.lastUpdated ? formatDateForAirtable(new Date(streak.lastUpdated)) : undefined
-    });
-    return {
-      id: record.id,
-      ...record.fields
-    } as AirtableStreak;
-  } catch (error) {
-    console.error('Error updating user streak:', error);
-    throw error;
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Streaks/${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fields: streak }),
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    throw new Error('[Airtable REST] Error updating streak: ' + await res.text());
   }
+  const record = await res.json();
+  return {
+    id: record.id,
+    ...record.fields
+  } as AirtableStreak;
 }
 
 export async function createOrUpdateUser(user: Omit<AirtableUser, 'id'>): Promise<AirtableUser> {
-  try {
-    const records = await base(TABLES.USERS)
-      .select({
-        filterByFormula: `{email} = '${user.email}'`,
-        maxRecords: 1
-      })
-      .all();
-
-    if (records.length === 0) {
-      // Create new user
-      const record = await base(TABLES.USERS).create({
-        ...user,
-        createdAt: formatDateForAirtable(new Date(user.createdAt))
-      });
-      return {
-        id: record.id,
-        ...record.fields
-      } as AirtableUser;
-    }
-
+  // Try to find the user first
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=${encodeURIComponent(`{email} = '${user.email}'`)}&maxRecords=1`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    throw new Error('[Airtable REST] Error fetching user: ' + await res.text());
+  }
+  const data = await res.json();
+  if (data.records && data.records.length > 0) {
     // Update existing user
-    const record = await base(TABLES.USERS).update(records[0].id, {
-      ...user,
-      createdAt: formatDateForAirtable(new Date(user.createdAt))
+    const id = data.records[0].id;
+    const updateUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users/${id}`;
+    const updateRes = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: user }),
+      cache: 'no-store'
     });
+    if (!updateRes.ok) {
+      throw new Error('[Airtable REST] Error updating user: ' + await updateRes.text());
+    }
+    const record = await updateRes.json();
     return {
       id: record.id,
       ...record.fields
     } as AirtableUser;
-  } catch (error) {
-    console.error('Error creating/updating user:', error);
-    throw error;
+  } else {
+    // Create new user
+    const createUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users`;
+    const createRes = await fetch(createUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: user }),
+      cache: 'no-store'
+    });
+    if (!createRes.ok) {
+      throw new Error('[Airtable REST] Error creating user: ' + await createRes.text());
+    }
+    const record = await createRes.json();
+    return {
+      id: record.id,
+      ...record.fields
+    } as AirtableUser;
   }
 }
 
@@ -236,7 +232,20 @@ export async function createStreak(userId: string): Promise<AirtableStreak> {
     longestStreak: 0,
     lastUpdated: formatDateForAirtable(new Date())
   };
-  const record = await base(TABLES.STREAKS).create(newStreak);
+  const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Streaks`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fields: newStreak }),
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    throw new Error('[Airtable REST] Error creating streak: ' + await res.text());
+  }
+  const record = await res.json();
   return {
     id: record.id,
     ...record.fields
