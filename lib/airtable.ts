@@ -1,3 +1,13 @@
+// Polyfill AbortController/AbortSignal for Airtable SDK in serverless environments
+if (typeof globalThis.AbortController === "undefined") {
+  // @ts-ignore
+  globalThis.AbortController = require("abort-controller");
+}
+if (typeof globalThis.AbortSignal === "undefined" && globalThis.AbortController) {
+  // @ts-ignore
+  globalThis.AbortSignal = globalThis.AbortController.prototype.signal.constructor;
+}
+
 import Airtable from 'airtable';
 
 // Table names
@@ -62,6 +72,7 @@ export interface AirtableStreak {
 // Utility functions for Airtable operations
 export async function getSubmissions(userId: string, limit: number = 30): Promise<AirtableSubmission[]> {
   try {
+    console.log('[Airtable] Fetching submissions for userId:', userId);
     const records = await base(TABLES.SUBMISSIONS)
       .select({
         filterByFormula: `{userId} = '${userId}'`,
@@ -69,13 +80,13 @@ export async function getSubmissions(userId: string, limit: number = 30): Promis
         maxRecords: limit
       })
       .all();
-
+    console.log('[Airtable] Submissions fetched:', records.map(r => ({ id: r.id, ...r.fields })));
     return records.map(record => ({
       id: record.id,
       ...record.fields
     })) as AirtableSubmission[];
   } catch (error) {
-    console.error('Error fetching submissions:', error);
+    console.error('[Airtable] Error fetching submissions:', error);
     // Return empty array if there's an error
     return [];
   }
