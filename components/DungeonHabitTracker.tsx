@@ -57,8 +57,10 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
   };
 
   const handleSubmitUpdate = async (text: string) => {
+    console.log("handleSubmitUpdate called with text:", text);
     try {
       await submitUpdate(userId, currentDate.toISOString().split("T")[0], text);
+
       // Refresh data after submission
       const streakData = await fetchUserStreaks(userId);
       const updateData = await fetchUserUpdates(userId);
@@ -69,6 +71,7 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
         title: "Progress Updated!",
         description: "Your dungeon scroll has been updated successfully.",
       });
+      console.log("Toast should have fired!");
     } catch (error) {
       toast({
         title: "Failed to update",

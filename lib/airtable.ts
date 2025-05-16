@@ -71,6 +71,10 @@ export async function getSubmissions(userId: string, limit: number = 30): Promis
 }
 
 export async function createSubmission(submission: Omit<AirtableSubmission, 'id'>): Promise<AirtableSubmission> {
+  // Ensure date fields are YYYY-MM-DD strings
+  const fields: any = { ...submission };
+  if (fields.createdAt) fields.createdAt = new Date(fields.createdAt).toISOString().split('T')[0];
+  if (fields.updatedAt) fields.updatedAt = new Date(fields.updatedAt).toISOString().split('T')[0];
   const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Submissions`;
   const res = await fetch(url, {
     method: 'POST',
@@ -78,7 +82,7 @@ export async function createSubmission(submission: Omit<AirtableSubmission, 'id'
       Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ fields: submission }),
+    body: JSON.stringify({ fields }),
     cache: 'no-store'
   });
   if (!res.ok) {
@@ -92,6 +96,10 @@ export async function createSubmission(submission: Omit<AirtableSubmission, 'id'
 }
 
 export async function updateSubmission(id: string, submission: Partial<AirtableSubmission>): Promise<AirtableSubmission> {
+  // Ensure date fields are YYYY-MM-DD strings
+  const fields: any = { ...submission };
+  if (fields.createdAt) fields.createdAt = new Date(fields.createdAt).toISOString().split('T')[0];
+  if (fields.updatedAt) fields.updatedAt = new Date(fields.updatedAt).toISOString().split('T')[0];
   const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Submissions/${id}`;
   const res = await fetch(url, {
     method: 'PATCH',
@@ -99,7 +107,7 @@ export async function updateSubmission(id: string, submission: Partial<AirtableS
       Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ fields: submission }),
+    body: JSON.stringify({ fields }),
     cache: 'no-store'
   });
   if (!res.ok) {
@@ -147,6 +155,9 @@ export async function getUserStreak(userId: string): Promise<AirtableStreak> {
 }
 
 export async function updateUserStreak(id: string, streak: Partial<AirtableStreak>): Promise<AirtableStreak> {
+  // Ensure date fields are YYYY-MM-DD strings
+  const fields: any = { ...streak };
+  if (fields.lastUpdated) fields.lastUpdated = new Date(fields.lastUpdated).toISOString().split('T')[0];
   const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Streaks/${id}`;
   const res = await fetch(url, {
     method: 'PATCH',
@@ -154,7 +165,7 @@ export async function updateUserStreak(id: string, streak: Partial<AirtableStrea
       Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ fields: streak }),
+    body: JSON.stringify({ fields }),
     cache: 'no-store'
   });
   if (!res.ok) {
@@ -181,17 +192,22 @@ export async function createOrUpdateUser(user: Omit<AirtableUser, 'id'>): Promis
     throw new Error('[Airtable REST] Error fetching user: ' + await res.text());
   }
   const data = await res.json();
+  const formatUserDates = (fields: any) => {
+    if (fields.createdAt) fields.createdAt = new Date(fields.createdAt).toISOString().split('T')[0];
+    return fields;
+  };
   if (data.records && data.records.length > 0) {
     // Update existing user
     const id = data.records[0].id;
     const updateUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users/${id}`;
+    const updateFields = formatUserDates(user);
     const updateRes = await fetch(updateUrl, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ fields: user }),
+      body: JSON.stringify({ fields: updateFields }),
       cache: 'no-store'
     });
     if (!updateRes.ok) {
@@ -205,13 +221,14 @@ export async function createOrUpdateUser(user: Omit<AirtableUser, 'id'>): Promis
   } else {
     // Create new user
     const createUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users`;
+    const createFields = formatUserDates(user);
     const createRes = await fetch(createUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ fields: user }),
+      body: JSON.stringify({ fields: createFields }),
       cache: 'no-store'
     });
     if (!createRes.ok) {
@@ -230,7 +247,7 @@ export async function createStreak(userId: string): Promise<AirtableStreak> {
     userId,
     currentStreak: 0,
     longestStreak: 0,
-    lastUpdated: formatDateForAirtable(new Date())
+    lastUpdated: new Date().toISOString().split('T')[0]
   };
   const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Streaks`;
   const res = await fetch(url, {
