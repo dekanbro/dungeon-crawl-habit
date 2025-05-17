@@ -94,6 +94,46 @@ export async function submitUpdate(
 }
 
 /**
+ * Submit a new update as an admin
+ */
+export async function submitUpdateAsAdmin(
+  userId: string, 
+  date: string, 
+  submissionText: string,
+  adminKey: string
+): Promise<void> {
+  try {
+    const payload: SubmissionPayload = {
+      userId,
+      date,
+      submissionText
+    };
+    
+    // Make POST request to /api/submit with admin key
+    const response = await fetch('/api/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': adminKey
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to submit update');
+    }
+    
+    const data = await response.json();
+    
+    // Trigger webhook notification
+    await triggerWebhook(userId, date, submissionText, data.streakCount);
+  } catch (error) {
+    console.error('Error submitting update:', error);
+    throw error;
+  }
+}
+
+/**
  * Trigger webhook notification
  */
 export async function triggerWebhook(

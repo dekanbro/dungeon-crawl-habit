@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import type { SubmissionPayload } from "@/lib/types";
-import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak, createStreak } from "@/lib/airtable";
+import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak, createStreak, getUserByDiscord } from "@/lib/airtable";
 import { triggerWebhook } from "@/lib/api";
+import { validateAdminKey } from "@/lib/middleware";
 
 export async function POST(request: Request) {
   try {
+    // Check for admin key in headers
+    const adminValidation = validateAdminKey(request as any);
+    if (adminValidation) {
+      return adminValidation;
+    }
+
     const body = await request.json() as SubmissionPayload;
-    const { userId, date, submissionText } = body;
+    let { userId, date, submissionText } = body;
     
     // Validate required fields
     if (!userId || !date || !submissionText) {
@@ -14,6 +21,18 @@ export async function POST(request: Request) {
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    // If userId looks like a Discord ID or username, try to look up the user
+    if (userId.startsWith('@') || /^\d{17,19}$/.test(userId)) {
+      const discordUser = await getUserByDiscord(userId.startsWith('@') ? userId.slice(1) : userId);
+      if (!discordUser) {
+        return NextResponse.json(
+          { error: "Discord user not found" },
+          { status: 404 }
+        );
+      }
+      userId = discordUser.email; // Use the email as the userId
     }
     
     // Get existing submissions for the user

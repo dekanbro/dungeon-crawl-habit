@@ -271,4 +271,51 @@ export async function createStreak(userId: string): Promise<AirtableStreak> {
     id: record.id,
     ...record.fields
   } as AirtableStreak;
+}
+
+export async function getUserByDiscord(discordIdentifier: string): Promise<AirtableUser | null> {
+  // Try to find user by Discord ID first
+  let url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=${encodeURIComponent(`{discordId} = '${discordIdentifier}'`)}&maxRecords=1`;
+  let res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store'
+  });
+
+  if (!res.ok) {
+    console.error('[Airtable REST] Error fetching user by Discord ID:', await res.text());
+    return null;
+  }
+
+  let data = await res.json();
+  
+  // If not found by ID, try username
+  if (!data.records || data.records.length === 0) {
+    url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=${encodeURIComponent(`{discordUsername} = '${discordIdentifier}'`)}&maxRecords=1`;
+    res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
+
+    if (!res.ok) {
+      console.error('[Airtable REST] Error fetching user by Discord username:', await res.text());
+      return null;
+    }
+
+    data = await res.json();
+  }
+
+  if (!data.records || data.records.length === 0) {
+    return null;
+  }
+
+  return {
+    id: data.records[0].id,
+    ...data.records[0].fields
+  } as AirtableUser;
 } 
