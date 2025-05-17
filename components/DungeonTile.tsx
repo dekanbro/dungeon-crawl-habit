@@ -89,7 +89,7 @@ export default function DungeonTile({
           <TooltipTrigger asChild>
             <div
               className={cn(
-                "w-24 sm:w-28 aspect-square relative border rounded-sm transition-all duration-300",
+                "w-24 sm:w-24 aspect-square relative border rounded-sm transition-all duration-300",
                 getTileStyle(),
                 update && "cursor-pointer hover:scale-105"
               )}

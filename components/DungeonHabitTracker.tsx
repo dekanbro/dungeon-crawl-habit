@@ -102,7 +102,7 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
             <ChevronLeft size={18} />
           </button>
           
-          <div className="text-lg font-medium">
+          <div className="text-lg font-medium text-muted-foreground">
             {format(currentWeekStart, "MMM d")} - {format(addDays(currentWeekStart, 27), "MMM d, yyyy")}
           </div>
           
@@ -146,15 +146,15 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Current Streak:</span>
-                <span className="font-medium">{streaks.currentStreak} days</span>
+                <span className="font-medium text-primary">{streaks.currentStreak} days</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Longest Streak:</span>
-                <span className="font-medium">{streaks.longestStreak} days</span>
+                <span className="font-medium text-primary">{streaks.longestStreak} days</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Updates:</span>
-                <span className="font-medium">{updates.length}</span>
+                <span className="font-medium text-primary">{updates.length}</span>
               </div>
             </div>
           )}

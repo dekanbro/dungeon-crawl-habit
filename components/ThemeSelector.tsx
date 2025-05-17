@@ -12,8 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 const themes = [
-  { id: "catacombs", name: "Ancient Catacombs" },
   { id: "volcano", name: "Volcanic Chambers" },
+  { id: "catacombs", name: "Ancient Catacombs" },
   { id: "frost", name: "Frost Caverns" },
   { id: "arcane", name: "Arcane Library" },
 ];
@@ -27,7 +27,7 @@ export default function ThemeSelector() {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="flex items-center justify-between gap-2">
+        <Button variant="outline" className="flex items-center justify-between gap-2 text-muted-foreground">
           <span>{currentTheme.name}</span>
           <ChevronDown size={16} className={isOpen ? "transform rotate-180 transition-transform" : "transition-transform"} />
         </Button>
@@ -37,7 +37,7 @@ export default function ThemeSelector() {
           <DropdownMenuItem
             key={item.id}
             onClick={() => setTheme(item.id as any)}
-            className="flex items-center justify-between cursor-pointer"
+            className="flex items-center justify-between cursor-pointer text-muted-foreground"
           >
             {item.name}
             {theme === item.id && <Check size={16} className="ml-2 text-primary" />}

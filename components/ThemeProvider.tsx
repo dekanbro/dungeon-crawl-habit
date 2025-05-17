@@ -17,7 +17,7 @@ const ThemeContext = createContext<ThemeContextType>({
 export const useTheme = () => useContext(ThemeContext);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeType>("catacombs");
+  const [theme, setTheme] = useState<ThemeType>("volcano");
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>

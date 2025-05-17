@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SubmissionPayload } from "@/lib/types";
 import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak, createStreak } from "@/lib/airtable";
+import { triggerWebhook } from "@/lib/api";
 
 export async function POST(request: Request) {
   try {
@@ -95,6 +96,14 @@ export async function POST(request: Request) {
         updatedAt: new Date().toISOString()
       });
       
+      // Trigger webhook for update
+      try {
+        await triggerWebhook(userId, date, submissionText, userStreak.currentStreak);
+      } catch (error) {
+        console.error('Webhook notification failed:', error);
+        // Continue with the response even if webhook fails
+      }
+      
       return NextResponse.json({ 
         success: true,
         streakCount: userStreak.currentStreak,
@@ -110,6 +119,14 @@ export async function POST(request: Request) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
+      
+      // Trigger webhook for new submission
+      try {
+        await triggerWebhook(userId, date, submissionText, newStreakCount);
+      } catch (error) {
+        console.error('Webhook notification failed:', error);
+        // Continue with the response even if webhook fails
+      }
       
       return NextResponse.json({ 
         success: true,

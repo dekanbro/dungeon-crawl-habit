@@ -39,6 +39,9 @@ export interface AirtableUser {
   name?: string;
   avatarUrl?: string;
   createdAt: string;
+  githubId?: string;
+  discordId?: string;
+  linkedProviders?: string[];
 }
 
 export interface AirtableStreak {

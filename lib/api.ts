@@ -96,23 +96,34 @@ export async function submitUpdate(
 /**
  * Trigger webhook notification
  */
-async function triggerWebhook(
+export async function triggerWebhook(
   userId: string,
   date: string,
   submissionText: string,
   streakCount: number
 ): Promise<void> {
   try {
-    const response = await fetch('/api/webhook', {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    const webhookBearerKey = process.env.WEBHOOK_BEARER_KEY;
+
+    if (!webhookUrl || !webhookBearerKey) {
+      console.warn('Webhook URL or Bearer Key not configured');
+      return;
+    }
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (webhookBearerKey) {
+      headers['Authorization'] = `Bearer ${webhookBearerKey}`;
+    }
+
+    const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
-        userId,
-        date,
-        submissionText,
-        streakCount
+        message: `User ${userId} submitted an update: "${submissionText.slice(0, 250)}" (Streak: ${streakCount})`
       })
     });
     
