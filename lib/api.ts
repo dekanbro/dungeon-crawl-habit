@@ -111,6 +111,26 @@ export async function triggerWebhook(
       return;
     }
 
+    // Get user data from Airtable to check for Discord ID
+    const userUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=${encodeURIComponent(`{email} = '${userId}'`)}&maxRecords=1`;
+    const userRes = await fetch(userUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
+    
+    let discordId;
+    let discordUsername;
+    if (userRes.ok) {
+      const userData = await userRes.json();
+      if (userData.records?.[0]?.fields) {
+        discordId = userData.records[0].fields.discordId;
+        discordUsername = userData.records[0].fields.discordUsername;
+      }
+    }
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
@@ -123,7 +143,8 @@ export async function triggerWebhook(
       method: 'POST',
       headers,
       body: JSON.stringify({
-        message: `User ${userId} submitted an update: "${submissionText.slice(0, 250)}" (Streak: ${streakCount})`
+        message: `User @${discordUsername} submitted an update: "${submissionText.slice(0, 250)}" (Streak: ${streakCount})`,
+        discordId
       })
     });
     

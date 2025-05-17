@@ -37,12 +37,12 @@ export default function DungeonGrid({ weekStart, heatmapData, updates }: Dungeon
   return (
     <div className="w-full overflow-x-auto">
       <div className="flex justify-center w-full">
-        <table className="min-w-[600px] border-separate border-spacing-2">
+        <table className="min-w-[400px] sm:min-w-[600px] border-separate border-spacing-1 sm:border-spacing-2">
           <thead>
             <tr>
-              <th className="p-2"></th>
+              <th className="p-1 sm:p-2"></th>
               {dayLabels.map((day) => (
-                <th key={day} className="text-center text-xs sm:text-sm text-muted-foreground font-medium px-3 py-2">
+                <th key={day} className="text-center text-xs text-muted-foreground font-medium px-1 sm:px-3 py-1 sm:py-2">
                   {day}
                 </th>
               ))}
@@ -51,7 +51,7 @@ export default function DungeonGrid({ weekStart, heatmapData, updates }: Dungeon
           <tbody>
             {weeks.map((week, weekIndex) => (
               <tr key={weekIndex}>
-                <td className="text-xs sm:text-sm text-muted-foreground font-medium text-right pr-3 align-middle whitespace-nowrap py-2">
+                <td className="text-xs text-muted-foreground font-medium text-right pr-1 sm:pr-3 align-middle whitespace-nowrap py-1 sm:py-2">
                   {week.label}
                 </td>
                 {week.days.map((date, dayIndex) => {
@@ -62,7 +62,7 @@ export default function DungeonGrid({ weekStart, heatmapData, updates }: Dungeon
                     heatmapData[weekIndex]?.filter(Boolean).length || 0
                   ) : null;
                   return (
-                    <td key={dayIndex} className="p-0 text-center align-middle px-3 py-2">
+                    <td key={dayIndex} className="p-0 text-center align-middle px-1 sm:px-3 py-1 sm:py-2">
                       <DungeonTile
                         date={date}
                         streakValue={streakValue}

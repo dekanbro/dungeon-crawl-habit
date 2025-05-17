@@ -31,9 +31,12 @@ const handler = NextAuth({
           name: user.name || undefined,
           avatarUrl: user.image || undefined,
           createdAt: new Date().toISOString(),
-          // Add provider-specific IDs
+          // Add provider-specific IDs and usernames
           ...(account?.provider === 'github' && { githubId: account.providerAccountId }),
-          ...(account?.provider === 'discord' && { discordId: account.providerAccountId }),
+          ...(account?.provider === 'discord' && { 
+            discordId: account.providerAccountId,
+            discordUsername: user.name ?? undefined
+          }),
           linkedProviders: account?.provider ? [account.provider] : []
         });
         return true;

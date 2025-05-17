@@ -41,6 +41,7 @@ export interface AirtableUser {
   createdAt: string;
   githubId?: string;
   discordId?: string;
+  discordUsername?: string;
   linkedProviders?: string[];
 }
 
