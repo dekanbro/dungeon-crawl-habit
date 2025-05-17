@@ -1,83 +1,57 @@
-import { NextResponse } from "next/server";
-import { createOrUpdateUser } from "@/lib/airtable";
+import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    const webhookBearerKey = process.env.WEBHOOK_BEARER_KEY;
+
+    if (!webhookUrl || !webhookBearerKey) {
+      return NextResponse.json({ error: 'Webhook configuration missing' }, { status: 500 });
+    }
+
     const body = await request.json();
-    
-    // Validate required fields
-    if (!body.userId || !body.date || !body.submissionText) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-    
-    // Get or create user in Airtable
-    const user = await createOrUpdateUser({
-      email: body.userId,
-      createdAt: new Date().toISOString()
+    const { userId, date, submissionText, streakCount } = body;
+
+    // Get user data from Airtable to check for Discord ID
+    const userUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=${encodeURIComponent(`{email} = '${userId}'`)}&maxRecords=1`;
+    const userRes = await fetch(userUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
     });
     
-    const notificationMessage = formatNotification({
-      ...body,
-      userName: user.name || "Adventurer"
+    let discordId;
+    let discordUsername;
+    if (userRes.ok) {
+      const userData = await userRes.json();
+      if (userData.records?.[0]?.fields) {
+        discordId = userData.records[0].fields.discordId;
+        discordUsername = userData.records[0].fields.discordUsername;
+      }
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${webhookBearerKey}`
+      },
+      body: JSON.stringify({
+        message: `User @${discordUsername} submitted an update: "${submissionText.slice(0, 250)}" (Streak: ${streakCount})`,
+        discordId
+      })
     });
     
-    const success = await sendNotification(notificationMessage);
-    
-    if (!success) {
-      return NextResponse.json(
-        { error: "Failed to send notification" },
-        { status: 500 }
-      );
+    if (!response.ok) {
+      throw new Error('Failed to trigger webhook');
     }
-    
+
     return NextResponse.json({ success: true });
-    
   } catch (error) {
-    console.error("Error in /api/webhook:", error);
-    return NextResponse.json(
-      { error: "Failed to process webhook" },
-      { status: 500 }
-    );
-  }
-}
-
-// Helper function to format notification
-function formatNotification(data: any): string {
-  // Format streak achievement message
-  let streakMessage = "";
-  if (data.streakCount >= 7) {
-    streakMessage = "🔥 They're on fire with a 7+ day streak!";
-  } else if (data.streakCount >= 3) {
-    streakMessage = "✨ Their streak continues!";
-  } else if (data.streakCount === 1) {
-    streakMessage = "🚀 They've started a new streak!";
-  }
-  
-  // Create notification message
-  return `**${data.userName}** has updated their dungeon progress on ${data.date}!\n${streakMessage}`;
-}
-
-// Helper function to send notification
-async function sendNotification(message: string): Promise<boolean> {
-  try {
-    // In production, this would send to an actual webhook
-    // Example for Discord:
-    // const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-    // const response = await fetch(webhookUrl, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ content: message })
-    // });
-    // return response.ok;
-    
-    // For the demo, log what would be sent
-    console.log("Would send notification:", message);
-    return true;
-  } catch (error) {
-    console.error("Error sending notification:", error);
-    return false;
+    console.error('Error triggering webhook:', error);
+    return NextResponse.json({ error: 'Failed to trigger webhook' }, { status: 500 });
   }
 }
