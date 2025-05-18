@@ -143,7 +143,10 @@ export async function triggerWebhook(
   streakCount: number
 ): Promise<void> {
   try {
-    const response = await fetch('/api/webhook', {
+    // Use absolute URL for webhook
+    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/api/webhook`;
+    
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,6 +164,6 @@ export async function triggerWebhook(
     }
   } catch (error) {
     console.error('Error triggering webhook:', error);
-    throw error;
+    // Don't throw the error since webhook failure shouldn't affect the main submission
   }
 }
