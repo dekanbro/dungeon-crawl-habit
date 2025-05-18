@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import type { SubmissionPayload } from "@/lib/types";
 import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak, createStreak, getUserByDiscord } from "@/lib/airtable";
 import { triggerWebhook } from "@/lib/api";
-import { validateAdminKey } from "@/lib/middleware";
+import { validateRequest } from "@/lib/middleware";
+import { getServerSession } from "next-auth/next";
 
 export async function POST(request: Request) {
   try {
-    // Check for admin key in headers
-    const adminValidation = validateAdminKey(request as any);
-    if (adminValidation) {
-      return adminValidation;
+    // Validate request (either admin key or authenticated session)
+    const validation = await validateRequest(request as any);
+    if (validation) {
+      return validation;
     }
 
     const body = await request.json() as SubmissionPayload;
@@ -23,8 +24,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // If userId looks like a Discord ID or username, try to look up the user
-    if (userId.startsWith('@') || /^\d{17,19}$/.test(userId)) {
+    const session = await getServerSession();
+    const isAdminSubmission = request.headers.get('x-admin-key') !== null;
+
+    // If not an admin submission, verify user is submitting for themselves
+    if (!isAdminSubmission && userId !== session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized - You can only submit for yourself" },
+        { status: 403 }
+      );
+    }
+
+    // If using Discord identifier, look up the user
+    if (isAdminSubmission && (userId.startsWith('@') || /^\d{17,19}$/.test(userId))) {
       const discordUser = await getUserByDiscord(userId.startsWith('@') ? userId.slice(1) : userId);
       if (!discordUser) {
         return NextResponse.json(

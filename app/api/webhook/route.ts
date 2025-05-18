@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { validateRequest } from "@/lib/middleware";
 
 export async function POST(request: Request) {
   try {
+    // Validate request (admin key required for webhooks)
+    const validation = await validateRequest(request as any);
+    if (validation) {
+      return validation;
+    }
+
     const webhookUrl = process.env.WEBHOOK_URL;
     const webhookBearerKey = process.env.WEBHOOK_BEARER_KEY;
 
@@ -51,7 +58,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error triggering webhook:', error);
-    return NextResponse.json({ error: 'Failed to trigger webhook' }, { status: 500 });
+    console.error('Error in /api/webhook:', error);
+    return NextResponse.json({ error: 'Failed to process webhook' }, { status: 500 });
   }
 }
