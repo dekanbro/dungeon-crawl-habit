@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { validateRequest } from "@/lib/middleware";
+import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {

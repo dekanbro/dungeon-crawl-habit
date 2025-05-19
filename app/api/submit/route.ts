@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SubmissionPayload } from "@/lib/types";
 import { createSubmission, updateSubmission, getSubmissions, getUserStreak, updateUserStreak, createStreak, getUserByDiscord } from "@/lib/airtable";
-import { validateRequest } from "@/lib/middleware";
+import { validateRequest } from "@/lib/auth";
 import { getServerSession } from "next-auth/next";
 
 export async function POST(request: Request) {

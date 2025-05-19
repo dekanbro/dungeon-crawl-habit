@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserStreak, getSubmissions } from "@/lib/airtable";
 import { startOfWeek } from "date-fns";
-import { validateRequest } from "@/lib/middleware";
+import { validateRequest } from "@/lib/auth";
 import { getServerSession } from "next-auth/next";
 
 export async function GET(
@@ -41,24 +41,34 @@ export async function GET(
     // Get user's submissions for heatmap
     const submissions = await getSubmissions(userId);
     
+    // Get the week start from query params or use current week
+    const url = new URL(request.url);
+    const weekStartParam = url.searchParams.get('weekStart');
+    const weekStart = weekStartParam 
+      ? new Date(weekStartParam)
+      : startOfWeek(new Date(), { weekStartsOn: 1 });
+    
     // Generate heatmap data
     const heatmap = submissions.reduce((acc, submission) => {
-      acc[submission.date] = {
-        count: submission.streakCount,
-        date: submission.date
-      };
+      const submissionDate = new Date(submission.date);
+      const weekDiff = Math.floor((submissionDate.getTime() - weekStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      
+      // Only include submissions within the 4-week window
+      if (weekDiff >= 0 && weekDiff < 4) {
+        acc[submission.date] = {
+          count: submission.streakCount,
+          date: submission.date
+        };
+      }
       return acc;
     }, {} as Record<string, { count: number; date: string }>);
-    
-    // Get the start of the current week (Monday)
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
     
     return NextResponse.json({
       userId,
       currentStreak: streakData.currentStreak,
       longestStreak: streakData.longestStreak,
       heatmap,
-      weekStart
+      weekStart: weekStart.toISOString()
     });
     
   } catch (error) {

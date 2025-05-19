@@ -20,7 +20,13 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
   const [streaks, setStreaks] = useState<UserStreak | null>(null);
   const [updates, setUpdates] = useState<UserUpdate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const today = new Date();
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+    // If today is in the current week, use this week's start
+    // Otherwise, use the start of the week that contains today
+    return weekStart;
+  });
   const { toast } = useToast();
 
   // Get today's update if it exists
@@ -32,8 +38,9 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
     async function loadData() {
       setIsLoading(true);
       try {
-        const streakData = await fetchUserStreaks(userId);
-        const updateData = await fetchUserUpdates(userId);
+        const apiWeekStart = subWeeks(currentWeekStart, 3);
+        const streakData = await fetchUserStreaks(userId, apiWeekStart);
+        const updateData = await fetchUserUpdates(userId, apiWeekStart);
         setStreaks(streakData);
         setUpdates(updateData);
       } catch (error) {
@@ -48,7 +55,7 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
     }
 
     loadData();
-  }, [userId, toast]);
+  }, [userId, toast, currentWeekStart]);
 
   const navigateWeeks = (direction: "prev" | "next") => {
     setCurrentWeekStart(direction === "prev" 
@@ -62,8 +69,9 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
       await submitUpdate(userId, currentDate.toISOString().split("T")[0], text);
 
       // Refresh data after submission
-      const streakData = await fetchUserStreaks(userId);
-      const updateData = await fetchUserUpdates(userId);
+      const apiWeekStart = subWeeks(currentWeekStart, 3);
+      const streakData = await fetchUserStreaks(userId, apiWeekStart);
+      const updateData = await fetchUserUpdates(userId, apiWeekStart);
       setStreaks(streakData);
       setUpdates(updateData);
       
@@ -121,9 +129,9 @@ export default function DungeonHabitTracker({ userId }: DungeonHabitTrackerProps
           </div>
         ) : (
           <DungeonGrid 
-            weekStart={currentWeekStart} 
-            heatmapData={streaks?.heatmap || []} 
-            updates={updates}
+            weekStart={subWeeks(currentWeekStart, 3)} 
+            heatmapData={(streaks?.heatmap || []).slice().reverse()} 
+            updates={[...updates].reverse()} 
           />
         )}
       </div>

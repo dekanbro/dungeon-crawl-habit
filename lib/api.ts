@@ -4,9 +4,13 @@ import { parseISO } from "date-fns";
 /**
  * Fetch user streak data 
  */
-export async function fetchUserStreaks(userId: string): Promise<UserStreak> {
+export async function fetchUserStreaks(userId: string, weekStart?: Date): Promise<UserStreak> {
   try {
-    const response = await fetch(`/api/streaks/${userId}`);
+    const url = new URL(`/api/streaks/${userId}`, window.location.origin);
+    if (weekStart) {
+      url.searchParams.append('weekStart', weekStart.toISOString());
+    }
+    const response = await fetch(url.toString());
     if (!response.ok) {
       throw new Error('Failed to fetch user streaks');
     }
@@ -23,7 +27,8 @@ export async function fetchUserStreaks(userId: string): Promise<UserStreak> {
       const dayIndex = dateObj.getDay() || 7; // Convert Sunday (0) to 7
       
       if (weekIndex >= 0 && weekIndex < 4 && dayIndex >= 1 && dayIndex <= 7) {
-        heatmap[weekIndex][dayIndex - 1] = (value as { count: number }).count;
+        // Store in reverse order (3 - weekIndex) to match the reversed weeks display
+        heatmap[3 - weekIndex][dayIndex - 1] = (value as { count: number }).count;
       }
     });
     
@@ -42,9 +47,13 @@ export async function fetchUserStreaks(userId: string): Promise<UserStreak> {
 /**
  * Fetch user update history
  */
-export async function fetchUserUpdates(userId: string): Promise<UserUpdate[]> {
+export async function fetchUserUpdates(userId: string, weekStart?: Date): Promise<UserUpdate[]> {
   try {
-    const response = await fetch(`/api/updates/${userId}`);
+    const url = new URL(`/api/updates/${userId}`, window.location.origin);
+    if (weekStart) {
+      url.searchParams.append('weekStart', weekStart.toISOString());
+    }
+    const response = await fetch(url.toString());
     if (!response.ok) {
       throw new Error('Failed to fetch user updates');
     }

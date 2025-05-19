@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format, addDays, isSameDay, parseISO } from "date-fns";
+import { format, addDays, isSameDay, parseISO, addWeeks } from "date-fns";
 import DungeonTile from "./DungeonTile";
 import { getBossStatus } from "@/lib/utils";
 import type { UserUpdate } from "@/lib/types";
@@ -15,8 +15,9 @@ interface DungeonGridProps {
 export default function DungeonGrid({ weekStart, heatmapData, updates }: DungeonGridProps) {
   // Generate day and week labels
   const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const weeks = Array.from({ length: 4 }, (_, weekIndex) => {
-    const startDate = addDays(weekStart, weekIndex * 7);
+  // Generate weeks so that weeks[0] is apiWeekStart (top), weeks[3] is apiWeekStart + 3 weeks (bottom)
+  const weeks = Array.from({ length: 4 }, (_, i) => {
+    const startDate = addWeeks(weekStart, i);
     return {
       label: format(startDate, "MMM d"),
       days: Array.from({ length: 7 }, (_, dayIndex) => addDays(startDate, dayIndex))
@@ -25,6 +26,9 @@ export default function DungeonGrid({ weekStart, heatmapData, updates }: Dungeon
 
   // Find update for a specific date
   const getUpdateForDate = (date: Date): UserUpdate | undefined => {
+    const cellDateStr = date.toISOString().split('T')[0];
+    const updateDates = updates.map(u => u.date);
+    console.log('Checking cell date:', cellDateStr, 'against update dates:', updateDates);
     return updates.find(update => {
       const updateDate = parseISO(update.date);
       if (isSameDay(updateDate, date)) {
